@@ -1,4 +1,4 @@
-﻿#define WINDOWS
+#define WINDOWS
 
 #include <iostream>
 #include <ctime>
@@ -92,7 +92,7 @@ bool isSunk(char board[][SIZE], int row, int col) {
         if (board[i][col] == SHIP) return false;
         if (!isValid(i, col) || (board[i][col] != HIT && board[i][col] != KILL)) break;
     }
-    for (int i = row; i > 0; i--) {
+    for (int i = row; i >= 0; i--) {
         if (board[i][col] == SHIP) return false;
         if (!isValid(i, col) || (board[i][col] != HIT && board[i][col] != KILL)) break;
     }
@@ -100,7 +100,7 @@ bool isSunk(char board[][SIZE], int row, int col) {
         if (board[row][i] == SHIP) return false;
         if (!isValid(row, i) || (board[row][i] != HIT && board[row][i] != KILL)) break;
     }
-    for (int i = col; i > 0; i--) {
+    for (int i = col; i >= 0; i--) {
         if (board[row][i] == SHIP) return false;
         if (!isValid(row, i) || (board[row][i] != HIT && board[row][i] != KILL)) break;
     }
@@ -117,7 +117,7 @@ bool replaceShipCells(char board[][SIZE], int row, int col) {
         if (board[i][col] == HIT) board[i][col] = KILL;
         if (!isValid(i, col) || board[i][col] != KILL) break;
     }
-    for (int i = row; i > 0; i--) {
+    for (int i = row; i >= 0; i--) {
         if (board[i][col] == HIT) board[i][col] = KILL;
         if (!isValid(i, col) || board[i][col] != KILL) break;
     }
@@ -125,7 +125,7 @@ bool replaceShipCells(char board[][SIZE], int row, int col) {
         if (board[row][i] == HIT) board[row][i] = KILL;
         if (!isValid(row, i) || board[row][i] != KILL) break;
     }
-    for (int i = col; i > 0; i--) {
+    for (int i = col; i >= 0; i--) {
         if (board[row][i] == HIT) board[row][i] = KILL;
         if (!isValid(row, i) || board[row][i] != KILL) break;
     }
@@ -150,13 +150,35 @@ bool isInputValid(const string& input) {
     return true;
 }
 
+bool isMinimumDistanceValid(char board[][SIZE], int row, int col, int size, int direction) {
+    // Проверка горизонтальных клеток
+    for (int i = row - 1; i <= row + 1; i++) {
+        for (int j = col - 1; j <= col + size; j++) {
+            if (isValid(i, j) && board[i][j] == SHIP) {
+                return false;
+            }
+        }
+    }
+
+    // Проверка вертикальных клеток
+    for (int i = row - 1; i <= row + size; i++) {
+        for (int j = col - 1; j <= col + 1; j++) {
+            if (isValid(i, j) && board[i][j] == SHIP) {
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
 // функция проверяет допустимость размещения корабля на игровом поле.
 bool isPlacementValid(char board[][SIZE], int row, int col, int size, int direction) {
     for (int i = 0; i < size; i++) {
         int curRow = row + i * (1 - direction);
         int curCol = col + i * direction;
 
-        if (!isValid(curRow, curCol) || board[curRow][curCol] != '.') {
+        if (!isValid(curRow, curCol) || (board[curRow][curCol] != '.' && board[curRow][curCol] != HIT && board[curRow][curCol] != KILL)) {
             return false;
         }
 
@@ -172,66 +194,39 @@ bool isPlacementValid(char board[][SIZE], int row, int col, int size, int direct
             }
         }
         else { // direction == 0 (VERTICAL)
-            if ((curCol > 0 && board[curRow][curCol - 1] != '.') || (curCol < SIZE - 1 && board[curRow][curCol + 1] != '.')
-                || (curRow > 0 && curCol > 0 && board[curRow - 1][curCol - 1] != '.')
-                || (curRow > 0 && curCol < SIZE - 1 && board[curRow - 1][curCol + 1] != '.')
-                || (curRow < SIZE - 1 && curCol > 0 && board[curRow + 1][curCol - 1] != '.')
-                || (curRow < SIZE - 1 && curCol < SIZE - 1 && board[curRow + 1][curCol + 1] != '.')) {
+            if ((curCol > 0 && board[curRow][curCol - 1] != '.') ||
+                (curCol < SIZE - 1 && board[curRow][curCol + 1] != '.') ||
+                (curRow > 0 && curCol > 0 && board[curRow - 1][curCol - 1] != '.') ||
+                (curRow > 0 && curCol < SIZE - 1 && board[curRow - 1][curCol + 1] != '.') ||
+                (curRow < SIZE - 1 && curCol > 0 && board[curRow + 1][curCol - 1] != '.') ||
+                (curRow < SIZE - 1 && curCol < SIZE - 1 && board[curRow + 1][curCol + 1] != '.')) {
                 return false;
             }
         }
     }
-
     return true;
 }
 
 void placeShips(char board[][SIZE]) {
-
-    // размещение корабля длиной 4 клетки
-    int row = rand() % SIZE;
-    int col = rand() % (SIZE - 3);
+    int shipSizes[4] = { 4, 3, 3, 2 }; // размеры кораблей
+    int row, col, size, direction;
     for (int i = 0; i < 4; i++) {
-        board[row][col + i] = SHIP;
-    }
-
-    // размещение корабля длиной 3 клетки
-    row = rand() % SIZE;
-    col = rand() % (SIZE - 2);
-    for (int i = 0; i < 3; i++) {
-        // проверка, чтобы корабли не перекрывались
-        while (board[row][col + i] == SHIP || !isPlacementValid(board, row, col + i, 3, 1)) {
+        size = shipSizes[i];
+        bool isValidPlacement = false;
+        while (!isValidPlacement) {
             row = rand() % SIZE;
-            col = rand() % (SIZE - 2);
-        }
-        board[row][col + i] = SHIP;
-    }
-
-    // размещение корабля длиной 3 клетки
-    row = rand() % (SIZE - 2);
-    col = rand() % SIZE;
-    for (int i = 0; i < 3; i++) {
-        // проверка, чтобы корабли не перекрывались
-        while (board[row + i][col] == SHIP || !isPlacementValid(board, row + i, col, 3, 0)) {
-            row = rand() % (SIZE - 2);
             col = rand() % SIZE;
-        }
-        board[row + i][col] = SHIP;
-    }
+            direction = rand() % 2; // случайно выбираем направление корабля
 
-    // размещение корабля длиной 2 клетки
-    row = rand() % (SIZE - 1);
-    col = rand() % SIZE;
-    for (int i = 0; i < 2; i++) {
-        // проверка, чтобы корабли не перекрывались
-        while (board[row + i][col] == SHIP || !isPlacementValid(board, row + i, col, 2, 0)) {
-            row = rand() % (SIZE - 1);
-            col = rand() % SIZE;
+            isValidPlacement = isPlacementValid(board, row, col, size, direction);
+            if (isValidPlacement) {
+                for (int j = 0; j < size; j++) {
+                    board[row + j * (1 - direction)][col + j * direction] = SHIP;
+                }
+            }
         }
-        board[row + i][col] = SHIP;
     }
 }
-
-//  позволяет пользователю размещать корабли на своем игровом поле.
 //  позволяет пользователю размещать корабли на своем игровом поле.
 void placeShipsUser(char board[][SIZE]) {
     int shipSizes[4] = { 4, 3, 3, 2 }; // размеры кораблей
@@ -254,7 +249,6 @@ void placeShipsUser(char board[][SIZE]) {
                 direction = 1; // горизонтальное направление
             }
             else if (col + size > SIZE + 1) {
-                cout << "col" << endl;
                 direction = 0; // вертикальное направление
             }
             else {
@@ -334,22 +328,65 @@ int main() {
         }
 
         // ход компьютера
-        row = rand() % SIZE;
-        col = rand() % SIZE;
-        while (playerBoard[row][col] == HIT || playerBoard[row][col] == MISS) {
-            row = rand() % SIZE;
-            col = rand() % SIZE;
+        int hitRow = -1, hitCol = -1; // Переменные для хранения координат попадания
+        bool isHit = false; // Флаг, указывающий наличие попадания
+
+        // Проверяем наличие клеток рядом с уже пораженными клетками
+        for (int i = 0; i < SIZE; i++) {
+            for (int j = 0; j < SIZE; j++) {
+                if (playerBoard[i][j] == HIT) {
+                    // Проверяем клетку слева
+                    if (j > 0 && playerBoard[i][j - 1] != HIT && playerBoard[i][j - 1] != MISS) {
+                        hitRow = i;
+                        hitCol = j - 1;
+                        isHit = true;
+                        break;
+                    }
+                    // Проверяем клетку справа
+                    if (j < SIZE - 1 && playerBoard[i][j + 1] != HIT && playerBoard[i][j + 1] != MISS) {
+                        hitRow = i;
+                        hitCol = j + 1;
+                        isHit = true;
+                        break;
+                    }
+                    // Проверяем клетку сверху
+                    if (i > 0 && playerBoard[i - 1][j] != HIT && playerBoard[i - 1][j] != MISS) {
+                        hitRow = i - 1;
+                        hitCol = j;
+                        isHit = true;
+                        break;
+                    }
+                    // Проверяем клетку снизу
+                    if (i < SIZE - 1 && playerBoard[i + 1][j] != HIT && playerBoard[i + 1][j] != MISS) {
+                        hitRow = i + 1;
+                        hitCol = j;
+                        isHit = true;
+                        break;
+                    }
+                }
+            }
+            if (isHit) {
+                break;
+            }
         }
 
-        if (playerBoard[row][col] == SHIP) {
-            playerBoard[row][col] = HIT;
+        if (!isHit) {
+            // Если нет пораженных клеток рядом, выполняем случайный выстрел
+            do {
+                hitRow = rand() % SIZE;
+                hitCol = rand() % SIZE;
+            } while (playerBoard[hitRow][hitCol] == HIT || playerBoard[hitRow][hitCol] == MISS);
+        }
+
+        if (playerBoard[hitRow][hitCol] == SHIP) {
+            playerBoard[hitRow][hitCol] = HIT;
             playerHits--;
             cout << "Соперник попал в ваш корабль!" << endl;
-        }
-        else {
-            playerBoard[row][col] = MISS;
+        } else {
+            playerBoard[hitRow][hitCol] = MISS;
             cout << "Соперник промахнулся." << endl;
         }
+
 
         if (playerHits == 0) {
             break;
